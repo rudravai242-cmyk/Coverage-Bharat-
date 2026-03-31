@@ -1,0 +1,5 @@
+{
+  "name": "Coverage Bharat",
+  "description": "Real-time network coverage visualizer for India.",
+  "requestFramePermissions": ["geolocation"]
+}
