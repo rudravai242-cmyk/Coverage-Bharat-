@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import Map from './components/Map';
 import SearchBox from './components/SearchBox';
 import ProviderSelector from './components/ProviderSelector';
@@ -242,6 +243,7 @@ export default function App() {
       </AnimatePresence>
 
       <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-black/20 to-transparent pointer-events-none z-[60]" />
+      <Analytics />
     </div>
   );
 }
