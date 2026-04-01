@@ -11,7 +11,6 @@ import { INITIAL_CENTER, INITIAL_ZOOM, PROVIDERS } from './constants';
 import { CoveragePoint, NetworkTech, NetworkReport } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Info, Wifi, MapPin } from 'lucide-react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // Mock data generator with timestamps
 const generateMockPoints = (center: { lat: number; lng: number }, count: number, timeRangeDays: number = 30): CoveragePoint[] => {
@@ -243,8 +242,6 @@ export default function App() {
       </AnimatePresence>
 
       <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-black/20 to-transparent pointer-events-none z-[60]" />
-      
-      <SpeedInsights />
     </div>
   );
 }
