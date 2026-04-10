@@ -32,8 +32,8 @@ const Chatbot: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY || localApiKey || (import.meta as any).env?.VITE_GEMINI_API_KEY;
-      if (!apiKey || apiKey === 'undefined' || apiKey === 'MY_GEMINI_API_KEY') {
+      const apiKey = process.env.NETSCAN_AI_TOKEN || localApiKey || (import.meta as any).env?.VITE_NETSCAN_AI_TOKEN;
+      if (!apiKey || apiKey === 'undefined' || apiKey === 'MY_NETSCAN_AI_TOKEN') {
         throw new Error('API_KEY_MISSING');
       }
       
@@ -83,7 +83,7 @@ const Chatbot: React.FC = () => {
     } catch (error) {
       console.error("Chat error:", error);
       const errorMessage = error instanceof Error && error.message === 'API_KEY_MISSING' 
-        ? 'System Error: Gemini API Key is not set. Please enter your key in the settings icon above, or go to AI Studio "Settings" -> "Secrets" and add your GEMINI_API_KEY.'
+        ? 'System Error: AI Access Token is not set. Please enter your key in the settings icon above, or go to AI Studio "Settings" -> "Secrets" and add your NETSCAN_AI_TOKEN.'
         : 'A technical error has occurred. Please re-initialize the session.';
       setMessages(prev => [...prev, { role: 'model', text: errorMessage }]);
     } finally {
@@ -140,7 +140,7 @@ const Chatbot: React.FC = () => {
                 >
                   <div className="p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Gemini_API_Configuration</span>
+                      <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">AI_Access_Configuration</span>
                       <button onClick={() => setShowApiKeyInput(false)} className="text-gray-500 hover:text-white">
                         <X className="h-3 w-3" />
                       </button>
@@ -153,7 +153,7 @@ const Chatbot: React.FC = () => {
                           setLocalApiKey(e.target.value);
                           localStorage.setItem('NETSCAN_GEMINI_KEY', e.target.value);
                         }}
-                        placeholder="Enter your Gemini API Key..."
+                        placeholder="Enter your AI Access Token..."
                         className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-gray-600 outline-none focus:border-blue-500/50 font-mono"
                       />
                     </div>
