@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Info, Wifi, MapPin, Gauge, LayoutGrid, Eye, EyeOff, Activity } from 'lucide-react';
 
 // Mock data generator with timestamps
-const generateMockPoints = (center: { lat: number; lng: number }, count: number, timeRangeDays: number = 30): CoveragePoint[] => {
+const generateMockPoints = (center: { lat: number; lng: number }, count: number, spread: number = 0.2, timeRangeDays: number = 30): CoveragePoint[] => {
   const techs: NetworkTech[] = ['5G', '4G', '3G', '2G'];
   const providerNames = PROVIDERS.map(p => p.name);
   const now = Date.now();
@@ -21,7 +21,6 @@ const generateMockPoints = (center: { lat: number; lng: number }, count: number,
   
   return Array.from({ length: count }).map((_, i) => {
     const tech = techs[Math.floor(Math.random() * techs.length)];
-    // Generate speed based on tech
     let download = 0;
     if (tech === '5G') download = Math.floor(Math.random() * 300) + 100;
     else if (tech === '4G') download = Math.floor(Math.random() * 80) + 20;
@@ -30,8 +29,8 @@ const generateMockPoints = (center: { lat: number; lng: number }, count: number,
 
     return {
       id: `mock-${i}-${Math.random()}`,
-      lat: center.lat + (Math.random() - 0.5) * 0.2,
-      lng: center.lng + (Math.random() - 0.5) * 0.2,
+      lat: center.lat + (Math.random() - 0.5) * spread,
+      lng: center.lng + (Math.random() - 0.5) * spread,
       tech,
       provider: providerNames[Math.floor(Math.random() * providerNames.length)],
       accuracy: Math.random() * 45 + 5,
@@ -44,6 +43,24 @@ const generateMockPoints = (center: { lat: number; lng: number }, count: number,
     };
   });
 };
+
+const MAJOR_CITIES = [
+  { lat: 28.6139, lng: 77.2090, name: 'Delhi' },
+  { lat: 19.0760, lng: 72.8777, name: 'Mumbai' },
+  { lat: 12.9716, lng: 77.5946, name: 'Bangalore' },
+  { lat: 13.0827, lng: 80.2707, name: 'Chennai' },
+  { lat: 22.5726, lng: 88.3639, name: 'Kolkata' },
+  { lat: 17.3850, lng: 78.4867, name: 'Hyderabad' },
+  { lat: 23.0225, lng: 72.5714, name: 'Ahmedabad' },
+  { lat: 18.5204, lng: 73.8567, name: 'Pune' },
+  { lat: 26.8467, lng: 80.9462, name: 'Lucknow' },
+  { lat: 21.1458, lng: 79.0882, name: 'Nagpur' },
+  { lat: 15.2993, lng: 74.1240, name: 'Goa' },
+  { lat: 30.7333, lng: 76.7794, name: 'Chandigarh' },
+  { lat: 26.2124, lng: 78.1772, name: 'Gwalior' },
+  { lat: 20.2961, lng: 85.8245, name: 'Bhubaneswar' },
+  { lat: 11.0168, lng: 76.9558, name: 'Coimbatore' },
+];
 
 export default function App() {
   const [center, setCenter] = useState(INITIAL_CENTER);
@@ -61,10 +78,22 @@ export default function App() {
   // Reporting State
   const [reportingLocation, setReportingLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Initialize mock data
+  // Initialize mock data across India
   useEffect(() => {
-    // Increased count from 800 to 1500 for a significantly richer 'filled' look
-    setAllPoints(generateMockPoints(INITIAL_CENTER, 1500));
+    let points: CoveragePoint[] = [];
+    MAJOR_CITIES.forEach(city => {
+      // Generate 150 points for each major city with a wider spread
+      points = [...points, ...generateMockPoints({ lat: city.lat, lng: city.lng }, 150, 0.8)];
+    });
+    
+    // Add some random points across India
+    for (let i = 0; i < 500; i++) {
+      const lat = 8.4 + Math.random() * (37.6 - 8.4);
+      const lng = 68.7 + Math.random() * (97.2 - 68.7);
+      points.push(...generateMockPoints({ lat, lng }, 1, 0.1));
+    }
+
+    setAllPoints(points);
   }, []);
 
   const handleMapLoad = useCallback((map: any) => {
