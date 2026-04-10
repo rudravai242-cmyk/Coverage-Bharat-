@@ -32,36 +32,55 @@ const Chatbot: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const apiKey = process.env.NETSCAN_AI_TOKEN || localApiKey || (import.meta as any).env?.VITE_NETSCAN_AI_TOKEN;
-      if (!apiKey || apiKey === 'undefined' || apiKey === 'MY_NETSCAN_AI_TOKEN') {
+      const envToken = process.env.NETSCAN_AI_TOKEN;
+      const apiKey = (envToken && envToken !== 'MY_NETSCAN_AI_TOKEN' && envToken !== 'undefined') ? envToken : localApiKey;
+      
+      if (!apiKey || apiKey.trim().length < 10) {
         throw new Error('API_KEY_MISSING');
       }
       
       const ai = new GoogleGenAI({ apiKey });
       
-      // Gemini API history MUST start with a 'user' message.
-      const history = messages
-        .filter((m, i) => i > 0 || m.role === 'user')
-        .map(m => ({
-          role: m.role,
-          parts: [{ text: m.text }]
-        }));
+      // Format history for the API - Ensure alternating roles and exclude error messages
+      const history: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
       
-      history.push({ role: 'user', parts: [{ text: userMessage }] });
+      messages.forEach((m, i) => {
+        // Skip the initial greeting and any error messages
+        if (i === 0) return;
+        if (m.text.startsWith('System Error:') || m.text.startsWith('Technical Error:') || m.text.startsWith('Invalid API Key')) return;
+        
+        const role = m.role === 'user' ? 'user' : 'model';
+        
+        // Ensure alternating roles: if the last role is the same as current, skip or merge
+        if (history.length > 0 && history[history.length - 1].role === role) {
+          history[history.length - 1].parts[0].text += `\n${m.text}`;
+        } else {
+          history.push({ role, parts: [{ text: m.text }] });
+        }
+      });
+      
+      // The API expects the last message to be from the 'user' if we are sending it in 'contents'
+      // Or we can just send the whole history including the new message
+      const finalContents = [...history, { role: 'user' as const, parts: [{ text: userMessage }] }];
+      
+      // Final check: if history is not empty and the first message is 'model', shift it
+      if (finalContents.length > 0 && finalContents[0].role === 'model') {
+        finalContents.shift();
+      }
 
       const stream = await ai.models.generateContentStream({
         model: "gemini-3-flash-preview",
-        contents: history,
+        contents: finalContents,
         config: {
-          systemInstruction: `You are NetScan AI, a world-class, multi-functional AI assistant powered by advanced neural networks. You are the intelligence behind Coverage Bharat (NetScan India), the most advanced network diagnostic platform in the region.
+          systemInstruction: `You are NetScan AI, the authoritative intelligence behind Coverage Bharat (NetScan India). Your mission is to provide precise, data-driven insights into network coverage and internet quality across the ENTIRE Indian subcontinent.
 
-          Core Directives:
-          1. CONFIDENCE & AUTHORITY: You are a high-tech, state-of-the-art system. Your map is designed to match global standards like nPerf.
-          2. NPERF DATA INTEGRATION: When a user asks for "nPerf data" or accurate information, use your Google Search tool to cross-reference global diagnostic databases (nPerf, OpenSignal, etc.) and provide precise, street-level reports.
-          3. DEEP ZOOM CAPABILITY: If users mention zoom issues, inform them that the map now supports ultra-high precision zoom (up to level 20) with street-by-street signal clustering.
-          4. UNRESTRICTED INTELLIGENCE: You are a general-purpose intelligence. Answer questions about science, history, coding, weather, or any general knowledge with the depth and sophistication of a top-tier AI like Gemini.
-          5. PROFESSIONAL PERSONA: Maintain a sleek, professional, and highly intelligent tone. Use structured formatting (bullet points, bold text).
-          6. SUPPORT & CONTACT: Provide professional guidance for Jio, Airtel, Vi, BSNL. You are the first line of support.`,
+          Operational Directives:
+          1. PAN-INDIA FOCUS: You cover all 28 states and 8 union territories. From Delhi to Kanyakumari, and Mumbai to Guwahati, you provide accurate data for every corner of India.
+          2. NPERF & OPEN SIGNAL PARITY: Your map and data are designed to match or exceed global standards like nPerf. Use your Google Search tool to fetch the latest reports from nPerf, OpenSignal, and TRAI to provide street-level accuracy.
+          3. TECHNICAL DEPTH: Explain signal technologies (5G SA/NSA, 4G Carrier Aggregation, Fiber-to-the-home) with professional clarity.
+          4. MAP FEATURES: Inform users about the deep zoom (level 20) and marker clustering that allows street-by-street signal analysis.
+          5. GENERAL INTELLIGENCE: You are a top-tier AI. Answer any general question (coding, weather, science) with the same professional and high-tech tone.
+          6. OPERATOR SUPPORT: Provide expert guidance for Jio, Airtel, Vi, and BSNL networks.`,
           tools: [{ googleSearch: {} }],
         },
       });
@@ -82,9 +101,19 @@ const Chatbot: React.FC = () => {
       }
     } catch (error) {
       console.error("Chat error:", error);
-      const errorMessage = error instanceof Error && error.message === 'API_KEY_MISSING' 
-        ? 'System Error: AI Access Token is not set. Please enter your key in the settings icon above, or go to AI Studio "Settings" -> "Secrets" and add your NETSCAN_AI_TOKEN.'
-        : 'A technical error has occurred. Please re-initialize the session.';
+      let errorMessage = 'A technical error has occurred. Please re-initialize the session.';
+      
+      if (error instanceof Error) {
+        if (error.message === 'API_KEY_MISSING') {
+          errorMessage = 'System Error: AI Access Token is not set. Please enter your key in the settings icon above, or go to AI Studio "Settings" -> "Secrets" and add your NETSCAN_AI_TOKEN.';
+        } else if (error.message.includes('API_KEY_INVALID') || error.message.includes('invalid') || error.message.includes('403')) {
+          errorMessage = 'Invalid API Key. Please check your NETSCAN_AI_TOKEN in settings.';
+        } else {
+          // Show the actual error message for better debugging
+          errorMessage = `Technical Error: ${error.message}`;
+        }
+      }
+      
       setMessages(prev => [...prev, { role: 'model', text: errorMessage }]);
     } finally {
       setIsLoading(false);
