@@ -8,6 +8,11 @@ export interface CoveragePoint {
   provider: string;
   accuracy: number;
   timestamp: number;
+  speed?: {
+    download: number; // Mbps
+    upload: number;   // Mbps
+    latency: number;  // ms
+  };
 }
 
 export interface Provider {

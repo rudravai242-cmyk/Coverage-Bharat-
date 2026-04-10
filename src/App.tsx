@@ -4,13 +4,13 @@ import SearchBox from './components/SearchBox';
 import ProviderSelector from './components/ProviderSelector';
 import Controls from './components/Controls';
 import Legend from './components/Legend';
-import HistoricalPlayback from './components/HistoricalPlayback';
 import Chatbot from './components/Chatbot';
 import ReportModal from './components/ReportModal';
+import SpeedTest from './components/SpeedTest';
 import { INITIAL_CENTER, INITIAL_ZOOM, PROVIDERS } from './constants';
 import { CoveragePoint, NetworkTech, NetworkReport } from './types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Info, Wifi, MapPin } from 'lucide-react';
+import { Info, Wifi, MapPin, Gauge, LayoutGrid, Eye, EyeOff, Activity } from 'lucide-react';
 
 // Mock data generator with timestamps
 const generateMockPoints = (center: { lat: number; lng: number }, count: number, timeRangeDays: number = 30): CoveragePoint[] => {
@@ -19,15 +19,30 @@ const generateMockPoints = (center: { lat: number; lng: number }, count: number,
   const now = Date.now();
   const rangeMs = timeRangeDays * 24 * 60 * 60 * 1000;
   
-  return Array.from({ length: count }).map((_, i) => ({
-    id: `mock-${i}-${Math.random()}`,
-    lat: center.lat + (Math.random() - 0.5) * 0.2,
-    lng: center.lng + (Math.random() - 0.5) * 0.2,
-    tech: techs[Math.floor(Math.random() * techs.length)],
-    provider: providerNames[Math.floor(Math.random() * providerNames.length)],
-    accuracy: Math.random() * 45 + 5,
-    timestamp: now - Math.random() * rangeMs,
-  }));
+  return Array.from({ length: count }).map((_, i) => {
+    const tech = techs[Math.floor(Math.random() * techs.length)];
+    // Generate speed based on tech
+    let download = 0;
+    if (tech === '5G') download = Math.floor(Math.random() * 300) + 100;
+    else if (tech === '4G') download = Math.floor(Math.random() * 80) + 20;
+    else if (tech === '3G') download = Math.floor(Math.random() * 15) + 5;
+    else download = Math.floor(Math.random() * 2) + 0.5;
+
+    return {
+      id: `mock-${i}-${Math.random()}`,
+      lat: center.lat + (Math.random() - 0.5) * 0.2,
+      lng: center.lng + (Math.random() - 0.5) * 0.2,
+      tech,
+      provider: providerNames[Math.floor(Math.random() * providerNames.length)],
+      accuracy: Math.random() * 45 + 5,
+      timestamp: now - Math.random() * rangeMs,
+      speed: Math.random() > 0.3 ? {
+        download,
+        upload: download * 0.4,
+        latency: Math.floor(Math.random() * 50) + 10
+      } : undefined
+    };
+  });
 };
 
 export default function App() {
@@ -37,39 +52,20 @@ export default function App() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [mapInstance, setMapInstance] = useState<any>(null);
   const [isLocating, setIsLocating] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true);
-
-  // Historical Playback State
-  const now = useMemo(() => Date.now(), []);
-  const minTimestamp = useMemo(() => now - 30 * 24 * 60 * 60 * 1000, [now]);
-  const [currentTimestamp, setCurrentTimestamp] = useState(now);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [mapStyle, setMapStyle] = useState<'satellite' | 'streets' | 'dark' | 'light'>('satellite');
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showUI, setShowUI] = useState(true);
+  const [viewMode, setViewMode] = useState<'coverage' | 'speed'>('coverage');
+  const [showSpeedTest, setShowSpeedTest] = useState(false);
 
   // Reporting State
   const [reportingLocation, setReportingLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   // Initialize mock data
   useEffect(() => {
-    setAllPoints(generateMockPoints(INITIAL_CENTER, 200));
+    // Increased count from 300 to 800 for a more 'filled' look
+    setAllPoints(generateMockPoints(INITIAL_CENTER, 800));
   }, []);
-
-  // Playback timer
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isPlaying) {
-      interval = setInterval(() => {
-        setCurrentTimestamp(prev => {
-          const next = prev + 12 * 60 * 60 * 1000; // Advance 12 hours
-          if (next >= now) {
-            setIsPlaying(false);
-            return now;
-          }
-          return next;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying, now]);
 
   const handleMapLoad = useCallback((map: any) => {
     setMapInstance(map);
@@ -79,30 +75,25 @@ export default function App() {
     setReportingLocation({ lat, lng });
   };
 
-  const handleSearch = (query: string) => {
-    if (!window.mappls || !query) return;
+  const handleSearch = async (query: string) => {
+    if (!query) return;
 
     try {
-      const searchOptions = {
-        location: [center.lat, center.lng],
-        bridge: true,
-        hyperLocal: true
-      };
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+      const data = await response.json();
       
-      window.mappls.search(query, (data: any) => {
-        if (data && data.length > 0) {
-          const firstResult = data[0];
-          const lat = parseFloat(firstResult.lat || firstResult.latitude);
-          const lng = parseFloat(firstResult.lng || firstResult.longitude);
-          
-          if (!isNaN(lat) && !isNaN(lng)) {
-            const newCenter = { lat, lng };
-            setCenter(newCenter);
-            setZoom(15);
-            setAllPoints(prev => [...prev, ...generateMockPoints(newCenter, 50)]);
-          }
+      if (data && data.length > 0) {
+        const firstResult = data[0];
+        const lat = parseFloat(firstResult.lat);
+        const lng = parseFloat(firstResult.lon);
+        
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const newCenter = { lat, lng };
+          setCenter(newCenter);
+          setZoom(15);
+          setAllPoints(prev => [...prev, ...generateMockPoints(newCenter, 50)]);
         }
-      }, searchOptions);
+      }
     } catch (e) {
       console.error("Search failed:", e);
     }
@@ -144,50 +135,186 @@ export default function App() {
     // In a real app, this would go to Firestore
   };
 
-  // Filter points by provider AND timestamp
+  const handleSpeedTestComplete = (results: { download: number; upload: number; latency: number }) => {
+    if (!navigator.geolocation) return;
+    
+    navigator.geolocation.getCurrentPosition((position) => {
+      const { latitude, longitude } = position.coords;
+      const newPoint: CoveragePoint = {
+        id: `speed-${Date.now()}`,
+        lat: latitude,
+        lng: longitude,
+        tech: '5G', // Assume 5G for speed test demo or detect it
+        provider: 'Speed Test',
+        accuracy: 10,
+        timestamp: Date.now(),
+        speed: results
+      };
+      setAllPoints(prev => [newPoint, ...prev]);
+      setViewMode('speed'); // Switch to speed view to see the result
+    });
+  };
+
+  // Filter points by provider
   const filteredPoints = useMemo(() => {
     return allPoints.filter(p => {
-      const matchesProvider = !selectedProvider || p.provider.toLowerCase().includes(selectedProvider.toLowerCase());
-      const matchesTime = p.timestamp <= currentTimestamp;
-      return matchesProvider && matchesTime;
+      return !selectedProvider || p.provider.toLowerCase().includes(selectedProvider.toLowerCase());
     });
-  }, [allPoints, selectedProvider, currentTimestamp]);
+  }, [allPoints, selectedProvider]);
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-gray-900 font-sans">
-      <Map 
-        center={center} 
-        zoom={zoom} 
-        points={filteredPoints} 
-        onMapLoad={handleMapLoad} 
-        onMapClick={handleMapClick}
-      />
+    <div className="relative w-screen h-screen overflow-hidden bg-[#050505] font-sans text-white selection:bg-blue-500/30">
+      {/* Header - Technical Dashboard Style */}
+      <header className="absolute top-0 left-0 right-0 h-14 bg-black/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-4 z-[2000]">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <Activity className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="font-bold text-sm tracking-tight text-white uppercase">Coverage Bharat <span className="text-blue-500 font-black">OS</span></h1>
+              <p className="text-[9px] text-gray-500 font-mono uppercase tracking-widest">v2.4.0 // LIVE_FEED</p>
+            </div>
+          </div>
+          
+          <div className="h-6 w-[1px] bg-white/10 hidden sm:block" />
+          
+          <div className="hidden sm:flex items-center gap-4">
+            <div className="flex flex-col">
+              <span className="text-[9px] text-gray-500 font-bold uppercase">Network Nodes</span>
+              <span className="text-xs font-mono text-blue-400">{allPoints.length.toLocaleString()}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[9px] text-gray-500 font-bold uppercase">Status</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-xs font-mono text-green-500">OPTIMAL</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setShowSpeedTest(true)}
+            className="px-3 py-1.5 bg-blue-600/10 border border-blue-500/30 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all flex items-center gap-2"
+          >
+            <Gauge className="h-3.5 w-3.5" />
+            Run Diagnostics
+          </button>
+          <button className="p-2 hover:bg-white/5 rounded-lg transition-colors text-gray-400 hover:text-white">
+            <Info className="h-4 w-4" />
+          </button>
+        </div>
+      </header>
 
-      <SearchBox onSearch={handleSearch} onClear={() => setZoom(INITIAL_ZOOM)} />
-      
-      <Legend />
-      
-      <ProviderSelector 
-        selectedProvider={selectedProvider} 
-        onSelect={setSelectedProvider} 
-      />
-      
-      <Controls 
-        onZoomIn={() => setZoom(prev => Math.min(prev + 1, 20))}
-        onZoomOut={() => setZoom(prev => Math.max(prev - 1, 4))}
-        onMyLocation={handleMyLocation}
-      />
+      {/* Main Map Container */}
+      <main className="absolute inset-0 pt-14 flex flex-col">
+        <div className="relative flex-1 bg-[#0a0a0a] overflow-hidden group">
+          <Map 
+            center={center} 
+            zoom={zoom} 
+            points={filteredPoints} 
+            mapStyle={mapStyle}
+            showHeatmap={showHeatmap}
+            viewMode={viewMode}
+            onMapLoad={handleMapLoad} 
+            onMapClick={handleMapClick}
+          />
 
-      <HistoricalPlayback 
-        currentTimestamp={currentTimestamp}
-        minTimestamp={minTimestamp}
-        maxTimestamp={now}
-        onTimestampChange={setCurrentTimestamp}
-        isPlaying={isPlaying}
-        onTogglePlay={() => setIsPlaying(!isPlaying)}
-      />
+          {/* UI Toggle - Sleek Pill Design */}
+          <div className="absolute top-4 left-4 z-[2001] flex items-center gap-2">
+            <button 
+              onClick={() => setShowUI(!showUI)}
+              className={`px-4 py-2 rounded-full backdrop-blur-md border transition-all flex items-center gap-2 shadow-2xl ${
+                showUI 
+                  ? 'bg-black/80 border-white/10 text-gray-400 hover:text-white' 
+                  : 'bg-blue-600 border-blue-500 text-white shadow-blue-500/20'
+              }`}
+            >
+              {showUI ? (
+                <>
+                  <EyeOff className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Hide_UI</span>
+                </>
+              ) : (
+                <>
+                  <Eye className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Show_UI</span>
+                </>
+              )}
+            </button>
+          </div>
+          
+          <AnimatePresence>
+            {showUI && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="contents"
+              >
+                {/* Search - Floating Center */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-[1001]">
+                  <SearchBox onSearch={handleSearch} onClear={() => setZoom(INITIAL_ZOOM)} />
+                </div>
+
+                {/* Left Panel - Technical Sidebar */}
+                <div className="absolute top-16 left-4 bottom-8 w-64 hidden md:flex flex-col gap-4 z-[1001]">
+                  <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-4">
+                    <Legend viewMode={viewMode} />
+                    <ProviderSelector 
+                      selectedProvider={selectedProvider} 
+                      onSelect={setSelectedProvider} 
+                    />
+                  </div>
+                  
+                  {/* View Mode Switcher - Integrated in Sidebar */}
+                  <div className="bg-black/80 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 flex gap-1">
+                    <button
+                      onClick={() => setViewMode('coverage')}
+                      className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'coverage' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      Coverage
+                    </button>
+                    <button
+                      onClick={() => setViewMode('speed')}
+                      className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'speed' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      Speed
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right Side Controls */}
+                <div className="absolute bottom-8 right-4 z-[1001]">
+                  <Controls 
+                    onZoomIn={() => setZoom(prev => Math.min(prev + 1, 20))}
+                    onZoomOut={() => setZoom(prev => Math.max(prev - 1, 4))}
+                    onMyLocation={handleMyLocation}
+                    mapStyle={mapStyle}
+                    onStyleChange={setMapStyle}
+                    showHeatmap={showHeatmap}
+                    onToggleHeatmap={() => setShowHeatmap(!showHeatmap)}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </main>
 
       <Chatbot />
+
+      <AnimatePresence>
+        {showSpeedTest && (
+          <SpeedTest 
+            onComplete={handleSpeedTestComplete}
+            onClose={() => setShowSpeedTest(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {reportingLocation && (
@@ -210,32 +337,6 @@ export default function App() {
             <div className="bg-white p-6 rounded-3xl shadow-2xl flex flex-col items-center gap-4">
               <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
               <p className="font-bold text-gray-800">Locating you...</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showWelcome && (
-          <motion.div 
-            initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}
-            className="absolute bottom-32 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-50"
-          >
-            <div className="bg-white/95 backdrop-blur-lg p-5 rounded-3xl shadow-2xl border border-blue-100 relative">
-              <button onClick={() => setShowWelcome(false)} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600">
-                <Info className="h-5 w-5" />
-              </button>
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-blue-100 rounded-2xl text-blue-600">
-                  <Wifi className="h-6 w-6" />
-                </div>
-                <div>
-                  <h2 className="font-bold text-gray-900">Coverage Bharat Pro</h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Tap anywhere on the map to report issues. Use the slider below to view historical coverage data.
-                  </p>
-                </div>
-              </div>
             </div>
           </motion.div>
         )}

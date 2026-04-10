@@ -10,9 +10,12 @@
     <meta property="og:description" content="Visualize and report network signal strength across India in real-time." />
     <meta property="og:type" content="website" />
     <meta name="robots" content="index, follow" />
-    <!-- Replace the token in the URLs below with your own Mappls Access Token from https://www.mappls.com/api/console -->
-    <script src="https://apis.mappls.com/advancedmaps/api/f609e798-7517-4638-898a-7848c772c3b8/map_sdk?v=3.0&layer=vector"></script>
-    <script src="https://apis.mappls.com/advancedmaps/api/f609e798-7517-4638-898a-7848c772c3b8/map_sdk_plugins?v=3.0"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+    <!-- Leaflet Heatmap Plugin -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js" crossorigin="anonymous"></script>
   </head>
   <body>
     <div id="root"></div>

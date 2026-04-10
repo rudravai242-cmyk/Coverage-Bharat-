@@ -3,7 +3,7 @@ import { NetworkTech, Provider } from './types';
 export const TECH_COLORS: Record<NetworkTech, string> = {
   '5G': '#A855F7', // Purple
   '4G': '#3B82F6', // Blue
-  '3G': '#F97316', // Orange
+  '3G': '#F59E0B', // Amber/Orange
   '2G': '#EF4444', // Red
 };
 
