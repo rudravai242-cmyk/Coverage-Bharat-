@@ -25,6 +25,7 @@ const Map: React.FC<MapProps> = ({ center, zoom, points, mapStyle, showHeatmap, 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const heatLayerRef = useRef<any>(null);
+  const clusterGroupRef = useRef<any>(null);
   const layersRef = useRef<Record<string, any>>({});
   const [isMapReady, setIsMapReady] = useState(false);
 
@@ -33,6 +34,8 @@ const Map: React.FC<MapProps> = ({ center, zoom, points, mapStyle, showHeatmap, 
 
     // Initialize Leaflet Map
     const initMap = () => {
+      if (mapInstance.current || !mapRef.current) return;
+
       if (!window.L || !window.L.heatLayer) {
         setTimeout(initMap, 100);
         return;
@@ -91,8 +94,10 @@ const Map: React.FC<MapProps> = ({ center, zoom, points, mapStyle, showHeatmap, 
       setTimeout(() => {
         setIsMapReady(true);
         // Ensure onMapLoad is called only once after initialization
-        onMapLoad(mapInstance.current);
-      }, 1800);
+        if (mapInstance.current) {
+          onMapLoad(mapInstance.current);
+        }
+      }, 800); // Faster transition to map
     };
 
     initMap();
@@ -144,15 +149,56 @@ const Map: React.FC<MapProps> = ({ center, zoom, points, mapStyle, showHeatmap, 
     if (heatLayerRef.current) {
       mapInstance.current.removeLayer(heatLayerRef.current);
     }
+    if (clusterGroupRef.current) {
+      mapInstance.current.removeLayer(clusterGroupRef.current);
+    }
 
     if (!showHeatmap) return;
 
-    // Grid-based Aggregation Logic (Clustering for Performance)
     const currentZoom = mapInstance.current.getZoom();
-    // Refined grid size for better density balance - even smaller for deep zoom
-    const gridSize = currentZoom > 18 ? 0.00005 : currentZoom > 16 ? 0.00015 : currentZoom > 14 ? 0.0004 : currentZoom > 11 ? 0.0015 : 0.008;
+
+    // Use Marker Clustering for very deep zoom (Level 18+) to show individual points
+    if (currentZoom >= 18 && window.L.markerClusterGroup) {
+      clusterGroupRef.current = window.L.markerClusterGroup({
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        spiderfyOnMaxZoom: true,
+        maxClusterRadius: 40
+      });
+
+      points.forEach(p => {
+        const marker = window.L.circleMarker([p.lat, p.lng], {
+          radius: 6,
+          fillColor: viewMode === 'speed' ? (p.speed?.download ? (p.speed.download > 100 ? '#22C55E' : '#F59E0B') : '#EF4444') : TECH_COLORS[p.tech],
+          color: '#fff',
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.8
+        });
+        marker.bindPopup(`
+          <div class="p-2 font-sans">
+            <div class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Signal_Report</div>
+            <div class="text-xs font-bold text-gray-800">${p.provider} - ${p.tech}</div>
+            ${p.speed ? `<div class="text-[10px] text-green-600 font-mono mt-1">Speed: ${p.speed.download} Mbps</div>` : ''}
+          </div>
+        `);
+        clusterGroupRef.current.addLayer(marker);
+      });
+
+      mapInstance.current.addLayer(clusterGroupRef.current);
+      return;
+    }
+
+    // Grid-based Aggregation Logic (Clustering for Performance & Density)
     
-    const grid: Record<string, { lat: number, lng: number, intensity: number }> = {};
+    // Even more granular grid at all levels to increase density and richness
+    const gridSize = currentZoom > 18 ? 0.00003 : 
+                     currentZoom > 16 ? 0.00008 : 
+                     currentZoom > 14 ? 0.0002 : 
+                     currentZoom > 11 ? 0.0008 : 
+                     currentZoom > 8 ? 0.003 : 0.01;
+    
+    const grid: Record<string, { lat: number, lng: number, intensity: number, count: number }> = {};
 
     points.forEach(p => {
       const latGrid = Math.round(p.lat / gridSize) * gridSize;
@@ -178,8 +224,12 @@ const Map: React.FC<MapProps> = ({ center, zoom, points, mapStyle, showHeatmap, 
         else intensity = 0.4;
       }
 
-      if (!grid[key] || intensity > grid[key].intensity) {
-        grid[key] = { lat: latGrid, lng: lngGrid, intensity };
+      if (!grid[key]) {
+        grid[key] = { lat: latGrid, lng: lngGrid, intensity, count: 1 };
+      } else {
+        // Accumulate intensity to show density, but cap it
+        grid[key].intensity = Math.min(1.0, grid[key].intensity + (intensity * 0.3));
+        grid[key].count += 1;
       }
     });
 
@@ -202,12 +252,18 @@ const Map: React.FC<MapProps> = ({ center, zoom, points, mapStyle, showHeatmap, 
     };
 
     // nPerf Style Heatmap: Seamless "Coverage Cloud"
-    // Increased radius and blur for a more filled look
+    // Increased radius and blur for a more filled, rich look
     heatLayerRef.current = window.L.heatLayer(heatData, {
-      radius: currentZoom > 18 ? 50 : currentZoom > 15 ? 35 : currentZoom > 12 ? 25 : 18,
-      blur: currentZoom > 18 ? 35 : currentZoom > 15 ? 25 : currentZoom > 12 ? 20 : 15,
+      radius: currentZoom > 18 ? 60 : 
+              currentZoom > 15 ? 45 : 
+              currentZoom > 12 ? 35 : 
+              currentZoom > 9 ? 28 : 20,
+      blur: currentZoom > 18 ? 40 : 
+            currentZoom > 15 ? 32 : 
+            currentZoom > 12 ? 25 : 
+            currentZoom > 9 ? 20 : 15,
       maxZoom: 20,
-      minOpacity: 0.55,
+      minOpacity: 0.45, // Slightly lower min opacity for smoother blending
       gradient: viewMode === 'speed' ? speedGradient : coverageGradient
     }).addTo(mapInstance.current);
 

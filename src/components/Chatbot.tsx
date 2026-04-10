@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, User, Search, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Search, Loader2, Settings, Key } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
 import { ChatMessage } from '../types';
@@ -11,6 +11,8 @@ const Chatbot: React.FC = () => {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [localApiKey, setLocalApiKey] = useState(localStorage.getItem('NETSCAN_GEMINI_KEY') || '');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -30,8 +32,8 @@ const Chatbot: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
+      const apiKey = process.env.GEMINI_API_KEY || localApiKey || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+      if (!apiKey || apiKey === 'undefined' || apiKey === 'MY_GEMINI_API_KEY') {
         throw new Error('API_KEY_MISSING');
       }
       
@@ -81,7 +83,7 @@ const Chatbot: React.FC = () => {
     } catch (error) {
       console.error("Chat error:", error);
       const errorMessage = error instanceof Error && error.message === 'API_KEY_MISSING' 
-        ? 'System Error: Gemini API Key is not configured in the environment.'
+        ? 'System Error: Gemini API Key is not set. Please enter your key in the settings icon above, or go to AI Studio "Settings" -> "Secrets" and add your GEMINI_API_KEY.'
         : 'A technical error has occurred. Please re-initialize the session.';
       setMessages(prev => [...prev, { role: 'model', text: errorMessage }]);
     } finally {
@@ -113,10 +115,55 @@ const Chatbot: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <button onClick={() => setIsOpen(false)} className="hover:bg-white/5 p-2 rounded-lg transition-colors text-gray-500 hover:text-white">
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={() => setShowApiKeyInput(!showApiKeyInput)} 
+                  className={`p-2 rounded-lg transition-colors ${showApiKeyInput ? 'bg-blue-600/20 text-blue-400' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                  title="AI Settings"
+                >
+                  <Key className="h-4 w-4" />
+                </button>
+                <button onClick={() => setIsOpen(false)} className="hover:bg-white/5 p-2 rounded-lg transition-colors text-gray-500 hover:text-white">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
+
+            {/* API Key Input Overlay */}
+            <AnimatePresence>
+              {showApiKeyInput && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="bg-blue-600/10 border-b border-blue-500/20 overflow-hidden"
+                >
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Gemini_API_Configuration</span>
+                      <button onClick={() => setShowApiKeyInput(false)} className="text-gray-500 hover:text-white">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="password"
+                        value={localApiKey}
+                        onChange={(e) => {
+                          setLocalApiKey(e.target.value);
+                          localStorage.setItem('NETSCAN_GEMINI_KEY', e.target.value);
+                        }}
+                        placeholder="Enter your Gemini API Key..."
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-gray-600 outline-none focus:border-blue-500/50 font-mono"
+                      />
+                    </div>
+                    <p className="text-[9px] text-gray-500 leading-relaxed">
+                      Your key is saved locally in your browser. Get one at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">aistudio.google.com</a>.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-transparent no-scrollbar">

@@ -63,8 +63,8 @@ export default function App() {
 
   // Initialize mock data
   useEffect(() => {
-    // Increased count from 300 to 800 for a more 'filled' look
-    setAllPoints(generateMockPoints(INITIAL_CENTER, 800));
+    // Increased count from 800 to 1500 for a significantly richer 'filled' look
+    setAllPoints(generateMockPoints(INITIAL_CENTER, 1500));
   }, []);
 
   const handleMapLoad = useCallback((map: any) => {
