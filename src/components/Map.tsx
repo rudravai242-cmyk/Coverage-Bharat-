@@ -157,31 +157,70 @@ const Map: React.FC<MapProps> = ({ center, zoom, points, mapStyle, showHeatmap, 
 
     const currentZoom = mapInstance.current.getZoom();
 
-    // Use Marker Clustering for very deep zoom (Level 18+) to show individual points
-    if (currentZoom >= 18 && window.L.markerClusterGroup) {
+    // Use Marker Clustering for deep zoom (Level 15+) to show individual points with high performance
+    if (currentZoom >= 15 && window.L.markerClusterGroup) {
       clusterGroupRef.current = window.L.markerClusterGroup({
         showCoverageOnHover: false,
         zoomToBoundsOnClick: true,
         spiderfyOnMaxZoom: true,
-        maxClusterRadius: 40
+        maxClusterRadius: 50,
+        iconCreateFunction: function(cluster: any) {
+          const count = cluster.getChildCount();
+          let colorClass = 'bg-blue-600/20 border-blue-500/50 text-blue-400';
+          if (count > 50) colorClass = 'bg-purple-600/20 border-purple-500/50 text-purple-400';
+          else if (count > 20) colorClass = 'bg-cyan-600/20 border-cyan-500/50 text-cyan-400';
+
+          return window.L.divIcon({
+            html: `<div class="flex items-center justify-center w-10 h-10 rounded-full ${colorClass} backdrop-blur-md border shadow-xl transition-transform hover:scale-110">
+                    <span class="text-[10px] font-black tracking-tighter">${count}</span>
+                   </div>`,
+            className: 'custom-cluster-icon',
+            iconSize: [40, 40]
+          });
+        }
       });
 
       points.forEach(p => {
         const marker = window.L.circleMarker([p.lat, p.lng], {
-          radius: 6,
+          radius: currentZoom > 18 ? 8 : 6,
           fillColor: viewMode === 'speed' ? (p.speed?.download ? (p.speed.download > 100 ? '#22C55E' : '#F59E0B') : '#EF4444') : TECH_COLORS[p.tech],
           color: '#fff',
-          weight: 1,
+          weight: 1.5,
           opacity: 1,
-          fillOpacity: 0.8
+          fillOpacity: 0.9
         });
-        marker.bindPopup(`
-          <div class="p-2 font-sans">
-            <div class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Signal_Report</div>
-            <div class="text-xs font-bold text-gray-800">${p.provider} - ${p.tech}</div>
-            ${p.speed ? `<div class="text-[10px] text-green-600 font-mono mt-1">Speed: ${p.speed.download} Mbps</div>` : ''}
+        
+        const popupContent = `
+          <div class="p-3 font-sans min-w-[140px] bg-black/90 text-white rounded-xl border border-white/10">
+            <div class="text-[9px] font-black text-blue-500 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+              <div class="w-1 h-1 bg-blue-500 rounded-full animate-pulse"></div>
+              Signal_Report
+            </div>
+            <div class="flex flex-col gap-1">
+              <div class="text-xs font-bold flex justify-between">
+                <span class="text-gray-400">Carrier:</span>
+                <span>${p.provider}</span>
+              </div>
+              <div class="text-xs font-bold flex justify-between">
+                <span class="text-gray-400">Tech:</span>
+                <span style="color: ${TECH_COLORS[p.tech]}">${p.tech}</span>
+              </div>
+              ${p.speed ? `
+                <div class="mt-2 pt-2 border-t border-white/5">
+                  <div class="text-[10px] font-mono text-green-400 flex justify-between">
+                    <span>DL_SPEED:</span>
+                    <span>${p.speed.download} Mbps</span>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
           </div>
-        `);
+        `;
+        
+        marker.bindPopup(popupContent, {
+          className: 'custom-popup',
+          closeButton: false
+        });
         clusterGroupRef.current.addLayer(marker);
       });
 

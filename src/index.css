@@ -60,3 +60,42 @@
   background: rgba(59, 130, 246, 0.3);
   color: white;
 }
+
+/* Custom Popup Styling */
+.custom-popup .leaflet-popup-content-wrapper {
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+}
+
+.custom-popup .leaflet-popup-tip {
+  background: #000 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+}
+
+/* Marker Cluster Group Animations */
+.marker-cluster {
+  background-clip: padding-box;
+  border-radius: 20px;
+}
+
+.marker-cluster div {
+  width: 30px;
+  height: 30px;
+  margin-left: 5px;
+  margin-top: 5px;
+  text-align: center;
+  border-radius: 15px;
+  font-size: 12px;
+}
+
+.custom-cluster-icon {
+  background: transparent !important;
+  border: none !important;
+}
