@@ -11,9 +11,22 @@ const Chatbot: React.FC = () => {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [thinkingStatus, setThinkingStatus] = useState('');
+  const [thinkingTime, setThinkingTime] = useState(0);
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [localApiKey, setLocalApiKey] = useState(localStorage.getItem('NETSCAN_GEMINI_KEY') || '');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const thinkingMessages = [
+    "Analyzing network parameters...",
+    "Reading diagnostic logs...",
+    "Cross-referencing nPerf databases...",
+    "Synthesizing coverage report...",
+    "Optimizing response for your region...",
+    "Verifying signal integrity...",
+    "Consulting technical documentation..."
+  ];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -22,6 +35,27 @@ const Chatbot: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (isLoading) {
+      setThinkingTime(0);
+      setThinkingStatus(thinkingMessages[0]);
+      
+      timerRef.current = setInterval(() => {
+        setThinkingTime(prev => prev + 1);
+        // Change status message every 2 seconds
+        setThinkingStatus(prev => {
+          const currentIndex = thinkingMessages.indexOf(prev);
+          return thinkingMessages[(currentIndex + 1) % thinkingMessages.length];
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isLoading]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -232,16 +266,31 @@ const Chatbot: React.FC = () => {
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <Bot className="h-3 w-3 text-blue-400" />
-                      <span className="text-[9px] font-black text-blue-500 uppercase tracking-[0.2em]">Processing...</span>
+                  <div className="flex flex-col gap-2 w-full max-w-[85%]">
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2">
+                        <Bot className="h-3 w-3 text-blue-400" />
+                        <span className="text-[9px] font-black text-blue-500 uppercase tracking-[0.2em] animate-pulse">
+                          {thinkingStatus}
+                        </span>
+                      </div>
+                      <span className="text-[9px] font-mono text-gray-600">
+                        {thinkingTime}s
+                      </span>
                     </div>
-                    <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex items-center gap-3">
+                    <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex flex-col gap-3">
                       <div className="flex gap-1">
                         <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
                         <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
                         <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" />
+                      </div>
+                      <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                        <motion.div 
+                          className="h-full bg-blue-500/50"
+                          initial={{ width: "0%" }}
+                          animate={{ width: "100%" }}
+                          transition={{ duration: 10, ease: "linear", repeat: Infinity }}
+                        />
                       </div>
                     </div>
                   </div>
