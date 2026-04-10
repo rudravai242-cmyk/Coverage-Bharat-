@@ -31,93 +31,101 @@ const Chatbot: React.FC = () => {
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
     setIsLoading(true);
 
-    try {
-      const envToken = process.env.NETSCAN_AI_TOKEN;
-      const apiKey = (envToken && envToken !== 'MY_NETSCAN_AI_TOKEN' && envToken !== 'undefined') ? envToken : localApiKey;
-      
-      if (!apiKey || apiKey.trim().length < 10) {
-        throw new Error('API_KEY_MISSING');
-      }
-      
-      const ai = new GoogleGenAI({ apiKey });
-      
-      // Format history for the API - Ensure alternating roles and exclude error messages
-      const history: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
-      
-      messages.forEach((m, i) => {
-        // Skip the initial greeting and any error messages
-        if (i === 0) return;
-        if (m.text.startsWith('System Error:') || m.text.startsWith('Technical Error:') || m.text.startsWith('Invalid API Key')) return;
+    const executeStream = async (retryCount = 0): Promise<void> => {
+      try {
+        const envToken = process.env.NETSCAN_AI_TOKEN;
+        const apiKey = (envToken && envToken !== 'MY_NETSCAN_AI_TOKEN' && envToken !== 'undefined') ? envToken : localApiKey;
         
-        const role = m.role === 'user' ? 'user' : 'model';
+        if (!apiKey || apiKey.trim().length < 10) {
+          throw new Error('API_KEY_MISSING');
+        }
         
-        // Ensure alternating roles: if the last role is the same as current, skip or merge
-        if (history.length > 0 && history[history.length - 1].role === role) {
-          history[history.length - 1].parts[0].text += `\n${m.text}`;
-        } else {
-          history.push({ role, parts: [{ text: m.text }] });
+        const ai = new GoogleGenAI({ apiKey });
+        
+        // Format history for the API - Ensure alternating roles and exclude error messages
+        const history: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
+        
+        messages.forEach((m, i) => {
+          if (i === 0) return;
+          if (m.text.startsWith('System Error:') || m.text.startsWith('Technical Error:') || m.text.startsWith('Invalid API Key') || m.text.startsWith('Quota Exceeded:')) return;
+          
+          const role = m.role === 'user' ? 'user' : 'model';
+          if (history.length > 0 && history[history.length - 1].role === role) {
+            history[history.length - 1].parts[0].text += `\n${m.text}`;
+          } else {
+            history.push({ role, parts: [{ text: m.text }] });
+          }
+        });
+        
+        const finalContents = [...history, { role: 'user' as const, parts: [{ text: userMessage }] }];
+        if (finalContents.length > 0 && finalContents[0].role === 'model') {
+          finalContents.shift();
         }
-      });
-      
-      // The API expects the last message to be from the 'user' if we are sending it in 'contents'
-      // Or we can just send the whole history including the new message
-      const finalContents = [...history, { role: 'user' as const, parts: [{ text: userMessage }] }];
-      
-      // Final check: if history is not empty and the first message is 'model', shift it
-      if (finalContents.length > 0 && finalContents[0].role === 'model') {
-        finalContents.shift();
-      }
 
-      const stream = await ai.models.generateContentStream({
-        model: "gemini-3-flash-preview",
-        contents: finalContents,
-        config: {
-          systemInstruction: `You are NetScan AI, the authoritative intelligence behind Coverage Bharat (NetScan India). Your mission is to provide precise, data-driven insights into network coverage and internet quality across the ENTIRE Indian subcontinent.
+        const stream = await ai.models.generateContentStream({
+          model: "gemini-3-flash-preview",
+          contents: finalContents,
+          config: {
+            systemInstruction: `You are NetScan AI, the authoritative intelligence behind Coverage Bharat (NetScan India). Your mission is to provide precise, data-driven insights into network coverage and internet quality across the ENTIRE Indian subcontinent.
 
-          Operational Directives:
-          1. PAN-INDIA FOCUS: You cover all 28 states and 8 union territories. From Delhi to Kanyakumari, and Mumbai to Guwahati, you provide accurate data for every corner of India.
-          2. NPERF & OPEN SIGNAL PARITY: Your map and data are designed to match or exceed global standards like nPerf. Use your Google Search tool to fetch the latest reports from nPerf, OpenSignal, and TRAI to provide street-level accuracy.
-          3. TECHNICAL DEPTH: Explain signal technologies (5G SA/NSA, 4G Carrier Aggregation, Fiber-to-the-home) with professional clarity.
-          4. MAP FEATURES: Inform users about the deep zoom (level 20) and marker clustering that allows street-by-street signal analysis.
-          5. GENERAL INTELLIGENCE: You are a top-tier AI. Answer any general question (coding, weather, science) with the same professional and high-tech tone.
-          6. OPERATOR SUPPORT: Provide expert guidance for Jio, Airtel, Vi, and BSNL networks.`,
-          tools: [{ googleSearch: {} }],
-        },
-      });
+            Operational Directives:
+            1. PAN-INDIA FOCUS: You cover all 28 states and 8 union territories. From Delhi to Kanyakumari, and Mumbai to Guwahati, you provide accurate data for every corner of India.
+            2. NPERF & OPEN SIGNAL PARITY: Your map and data are designed to match or exceed global standards like nPerf. Use your Google Search tool to fetch the latest reports from nPerf, OpenSignal, and TRAI to provide street-level accuracy.
+            3. TECHNICAL DEPTH: Explain signal technologies (5G SA/NSA, 4G Carrier Aggregation, Fiber-to-the-home) with professional clarity.
+            4. MAP FEATURES: Inform users about the deep zoom (level 20) and marker clustering that allows street-by-street signal analysis.
+            5. GENERAL INTELLIGENCE: You are a top-tier AI. Answer any general question (coding, weather, science) with the same professional and high-tech tone.
+            6. OPERATOR SUPPORT: Provide expert guidance for Jio, Airtel, Vi, and BSNL networks.`,
+            tools: [{ googleSearch: {} }],
+          },
+        });
 
-      let fullText = '';
-      setMessages(prev => [...prev, { role: 'model', text: '' }]);
+        let fullText = '';
+        setMessages(prev => [...prev, { role: 'model', text: '' }]);
 
-      for await (const chunk of stream) {
-        const chunkText = chunk.text;
-        if (chunkText) {
-          fullText += chunkText;
-          setMessages(prev => {
-            const newMessages = [...prev];
-            newMessages[newMessages.length - 1] = { role: 'model', text: fullText };
-            return newMessages;
-          });
+        for await (const chunk of stream) {
+          const chunkText = chunk.text;
+          if (chunkText) {
+            fullText += chunkText;
+            setMessages(prev => {
+              const newMessages = [...prev];
+              newMessages[newMessages.length - 1] = { role: 'model', text: fullText };
+              return newMessages;
+            });
+          }
         }
-      }
-    } catch (error) {
-      console.error("Chat error:", error);
-      let errorMessage = 'A technical error has occurred. Please re-initialize the session.';
-      
-      if (error instanceof Error) {
-        if (error.message === 'API_KEY_MISSING') {
-          errorMessage = 'System Error: AI Access Token is not set. Please enter your key in the settings icon above, or go to AI Studio "Settings" -> "Secrets" and add your NETSCAN_AI_TOKEN.';
-        } else if (error.message.includes('API_KEY_INVALID') || error.message.includes('invalid') || error.message.includes('403')) {
-          errorMessage = 'Invalid API Key. Please check your NETSCAN_AI_TOKEN in settings.';
-        } else {
-          // Show the actual error message for better debugging
-          errorMessage = `Technical Error: ${error.message}`;
+      } catch (error) {
+        console.error("Chat error:", error);
+        const errMessage = error instanceof Error ? error.message : String(error);
+
+        // Auto-retry logic for 429 (Quota Exceeded)
+        if ((errMessage.includes('429') || errMessage.includes('quota') || errMessage.includes('RESOURCE_EXHAUSTED')) && retryCount < 3) {
+          const waitTime = (retryCount + 1) * 3000; // Wait 3s, 6s, 9s
+          setMessages(prev => [...prev, { role: 'model', text: `System: Quota hit. Auto-retrying in ${waitTime/1000}s... (Attempt ${retryCount + 1}/3)` }]);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          // Remove the retry message before retrying
+          setMessages(prev => prev.filter(m => !m.text.includes('Auto-retrying')));
+          return executeStream(retryCount + 1);
         }
+
+        let errorMessage = 'A technical error has occurred. Please re-initialize the session.';
+        if (error instanceof Error) {
+          if (error.message === 'API_KEY_MISSING') {
+            errorMessage = 'System Error: AI Access Token is not set. Please enter your key in the settings icon above, or go to AI Studio "Settings" -> "Secrets" and add your NETSCAN_AI_TOKEN.';
+          } else if (error.message.includes('429') || error.message.includes('quota') || error.message.includes('RESOURCE_EXHAUSTED')) {
+            errorMessage = 'Quota Exceeded: You have reached the limit for your Gemini API key. Please wait a minute before trying again.';
+          } else if (error.message.includes('API_KEY_INVALID') || error.message.includes('invalid') || error.message.includes('403')) {
+            errorMessage = 'Invalid API Key. Please check your NETSCAN_AI_TOKEN in settings.';
+          } else {
+            errorMessage = `Technical Error: ${error.message}`;
+          }
+        }
+        setMessages(prev => [...prev, { role: 'model', text: errorMessage }]);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setMessages(prev => [...prev, { role: 'model', text: errorMessage }]);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    await executeStream();
   };
 
   return (
