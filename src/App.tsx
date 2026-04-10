@@ -82,15 +82,15 @@ export default function App() {
   useEffect(() => {
     let points: CoveragePoint[] = [];
     MAJOR_CITIES.forEach(city => {
-      // Generate 150 points for each major city with a wider spread
-      points = [...points, ...generateMockPoints({ lat: city.lat, lng: city.lng }, 150, 0.8)];
+      // Generate 300 points for each major city with a wider spread
+      points = [...points, ...generateMockPoints({ lat: city.lat, lng: city.lng }, 300, 1.2)];
     });
     
     // Add some random points across India
-    for (let i = 0; i < 500; i++) {
+    for (let i = 0; i < 800; i++) {
       const lat = 8.4 + Math.random() * (37.6 - 8.4);
       const lng = 68.7 + Math.random() * (97.2 - 68.7);
-      points.push(...generateMockPoints({ lat, lng }, 1, 0.1));
+      points.push(...generateMockPoints({ lat, lng }, 1, 0.2));
     }
 
     setAllPoints(points);
@@ -252,7 +252,7 @@ export default function App() {
           />
 
           {/* UI Toggle - Sleek Pill Design */}
-          <div className="absolute top-4 left-4 z-[2001] flex items-center gap-2">
+          <div className="absolute top-20 md:top-4 left-4 z-[2001] flex items-center gap-2">
             <button 
               onClick={() => setShowUI(!showUI)}
               className={`px-4 py-2 rounded-full backdrop-blur-md border transition-all flex items-center gap-2 shadow-2xl ${
