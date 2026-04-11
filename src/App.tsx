@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import Map from './components/Map';
 import SearchBox from './components/SearchBox';
-import ProviderSelector from './components/ProviderSelector';
 import Controls from './components/Controls';
 import Legend from './components/Legend';
 import Chatbot from './components/Chatbot';
@@ -67,6 +66,7 @@ export default function App() {
   const [zoom, setZoom] = useState(INITIAL_ZOOM);
   const [allPoints, setAllPoints] = useState<CoveragePoint[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [hasSelectedCarrier, setHasSelectedCarrier] = useState(false);
   const [mapInstance, setMapInstance] = useState<any>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [mapStyle, setMapStyle] = useState<'satellite' | 'streets' | 'dark' | 'light'>('satellite');
@@ -78,19 +78,54 @@ export default function App() {
   // Reporting State
   const [reportingLocation, setReportingLocation] = useState<{ lat: number; lng: number } | null>(null);
 
+  const handleProviderSelect = (providerId: string | null) => {
+    setSelectedProvider(providerId);
+    if (providerId) {
+      setHasSelectedCarrier(true);
+    }
+  };
+
   // Initialize mock data across India
   useEffect(() => {
     let points: CoveragePoint[] = [];
+    
+    // 1. Generate dense clusters around major cities
     MAJOR_CITIES.forEach(city => {
-      // Generate 300 points for each major city with a wider spread
-      points = [...points, ...generateMockPoints({ lat: city.lat, lng: city.lng }, 300, 1.2)];
+      // City center: very dense
+      points = [...points, ...generateMockPoints({ lat: city.lat, lng: city.lng }, 200, 0.15)];
+      // Suburban areas: medium density
+      points = [...points, ...generateMockPoints({ lat: city.lat, lng: city.lng }, 100, 0.5)];
     });
     
-    // Add some random points across India
-    for (let i = 0; i < 800; i++) {
+    // 2. Generate points along "Highways/Corridors" (Connecting major cities)
+    // This creates the "organic" look seen in nPerf
+    const corridors = [
+      [MAJOR_CITIES[0], MAJOR_CITIES[1]], // Delhi - Mumbai
+      [MAJOR_CITIES[0], MAJOR_CITIES[4]], // Delhi - Kolkata
+      [MAJOR_CITIES[1], MAJOR_CITIES[2]], // Mumbai - Bangalore
+      [MAJOR_CITIES[2], MAJOR_CITIES[3]], // Bangalore - Chennai
+      [MAJOR_CITIES[3], MAJOR_CITIES[5]], // Chennai - Hyderabad
+      [MAJOR_CITIES[5], MAJOR_CITIES[0]], // Hyderabad - Delhi
+      [MAJOR_CITIES[1], MAJOR_CITIES[7]], // Mumbai - Pune
+      [MAJOR_CITIES[0], MAJOR_CITIES[8]], // Delhi - Lucknow
+    ];
+
+    corridors.forEach(([start, end]) => {
+      const steps = 15;
+      for (let i = 0; i <= steps; i++) {
+        const lat = start.lat + (end.lat - start.lat) * (i / steps);
+        const lng = start.lng + (end.lng - start.lng) * (i / steps);
+        // Add points along the path with some jitter
+        points = [...points, ...generateMockPoints({ lat, lng }, 30, 0.3)];
+      }
+    });
+    
+    // 3. Add sparse random points for "rural" coverage (much fewer than before)
+    for (let i = 0; i < 300; i++) {
       const lat = 8.4 + Math.random() * (37.6 - 8.4);
       const lng = 68.7 + Math.random() * (97.2 - 68.7);
-      points.push(...generateMockPoints({ lat, lng }, 1, 0.2));
+      // Only add if it's likely within India (rough check)
+      points.push(...generateMockPoints({ lat, lng }, 1, 0.05));
     }
 
     setAllPoints(points);
@@ -194,62 +229,135 @@ export default function App() {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#050505] font-sans text-white selection:bg-blue-500/30">
       {/* Header - Technical Dashboard Style */}
-      <header className="absolute top-0 left-0 right-0 h-14 bg-black/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-4 z-[2000]">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Activity className="h-5 w-5 text-white" />
+      <header className="absolute top-0 left-0 right-0 h-16 bg-black/90 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-4 z-[3000]">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 ring-1 ring-blue-400/30">
+              <Activity className="h-6 w-6 text-white" />
             </div>
-            <div>
-              <h1 className="font-bold text-sm tracking-tight text-white uppercase">Coverage Bharat <span className="text-blue-500 font-black">OS</span></h1>
-              <p className="text-[9px] text-gray-500 font-mono uppercase tracking-widest">v2.4.0 // LIVE_FEED</p>
+            <div className="hidden xs:block">
+              <h1 className="font-black text-base tracking-tight text-white uppercase leading-none">Coverage Bharat <span className="text-blue-500">OS</span></h1>
+              <p className="text-[10px] text-gray-500 font-mono uppercase tracking-[0.2em] mt-1">v2.5.0 // LIVE_NETWORK_CORE</p>
             </div>
           </div>
           
-          <div className="h-6 w-[1px] bg-white/10 hidden sm:block" />
+          <div className="h-8 w-[1px] bg-white/10 hidden lg:block" />
           
-          <div className="hidden sm:flex items-center gap-4">
-            <div className="flex flex-col">
-              <span className="text-[9px] text-gray-500 font-bold uppercase">Network Nodes</span>
-              <span className="text-xs font-mono text-blue-400">{allPoints.length.toLocaleString()}</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[9px] text-gray-500 font-bold uppercase">Status</span>
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-xs font-mono text-green-500">OPTIMAL</span>
-              </div>
+          {/* Carrier Selector in Header */}
+          <div className="hidden md:flex items-center gap-2">
+            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mr-2">Carrier:</span>
+            <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+              {PROVIDERS.map((provider) => (
+                <button
+                  key={provider.id}
+                  onClick={() => handleProviderSelect(provider.id)}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    selectedProvider === provider.id 
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                      : 'text-gray-500 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {provider.name}
+                </button>
+              ))}
             </div>
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className="hidden lg:flex flex-col items-end mr-4">
+            <span className="text-[9px] text-gray-500 font-bold uppercase tracking-tighter">System Status</span>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+              <span className="text-[10px] font-mono text-green-500 font-bold">ENCRYPTED_LINK_STABLE</span>
+            </div>
+          </div>
+          
           <button 
             onClick={() => setShowSpeedTest(true)}
-            className="px-3 py-1.5 bg-blue-600/10 border border-blue-500/30 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all flex items-center gap-2"
+            className="px-4 py-2 bg-blue-600/10 border border-blue-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all flex items-center gap-2 shadow-lg shadow-blue-500/5 group"
           >
-            <Gauge className="h-3.5 w-3.5" />
-            Run Diagnostics
-          </button>
-          <button className="p-2 hover:bg-white/5 rounded-lg transition-colors text-gray-400 hover:text-white">
-            <Info className="h-4 w-4" />
+            <Gauge className="h-4 w-4 group-hover:rotate-12 transition-transform" />
+            <span className="hidden sm:inline">Run Diagnostics</span>
+            <span className="sm:hidden">Test</span>
           </button>
         </div>
       </header>
 
       {/* Main Map Container */}
-      <main className="absolute inset-0 pt-14 flex flex-col">
+      <main className="absolute inset-0 pt-16 flex flex-col">
         <div className="relative flex-1 bg-[#0a0a0a] overflow-hidden group">
           <Map 
             center={center} 
             zoom={zoom} 
             points={filteredPoints} 
             mapStyle={mapStyle}
-            showHeatmap={showHeatmap}
+            showHeatmap={showHeatmap && hasSelectedCarrier}
             viewMode={viewMode}
             onMapLoad={handleMapLoad} 
             onMapClick={handleMapClick}
           />
+
+          {/* Carrier Selection Overlay - nPerf Style */}
+          <AnimatePresence>
+            {!hasSelectedCarrier && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-[4000] flex items-center justify-center p-6"
+              >
+                {/* Diamond Blur Backdrop */}
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-[12px] bg-diamond [mask-image:radial-gradient(circle,black_0%,transparent_100%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.8)_100%)]" />
+                
+                <motion.div 
+                  initial={{ scale: 0.9, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  className="relative bg-black/80 backdrop-blur-2xl border border-white/10 p-8 md:p-12 rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.5)] max-w-lg w-full text-center"
+                >
+                  <div className="w-20 h-20 bg-blue-600/20 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-blue-500/30 shadow-2xl shadow-blue-500/10">
+                    <Wifi className="h-10 w-10 text-blue-500 animate-pulse" />
+                  </div>
+                  
+                  <h2 className="text-3xl font-black text-white mb-4 tracking-tight uppercase">Select a carrier!</h2>
+                  <p className="text-gray-400 text-sm mb-10 leading-relaxed font-medium">
+                    Please select a network carrier from the list below to visualize real-time coverage data across India.
+                  </p>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    {PROVIDERS.map((provider) => (
+                      <button
+                        key={provider.id}
+                        onClick={() => handleProviderSelect(provider.id)}
+                        className="group relative p-4 rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-blue-600 hover:border-blue-500 transition-all duration-300 text-left overflow-hidden"
+                      >
+                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                          <Activity className="h-12 w-12" />
+                        </div>
+                        <div 
+                          className="w-2 h-2 rounded-full mb-3 shadow-[0_0_8px_rgba(255,255,255,0.3)]" 
+                          style={{ backgroundColor: provider.color }} 
+                        />
+                        <span className="block text-xs font-black uppercase tracking-widest text-gray-400 group-hover:text-white transition-colors">
+                          {provider.name}
+                        </span>
+                        <span className="block text-[9px] text-gray-600 group-hover:text-blue-200 mt-1 uppercase font-bold">
+                          Network Core
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <div className="mt-10 pt-8 border-t border-white/5">
+                    <p className="text-[10px] text-gray-600 font-mono uppercase tracking-[0.3em]">
+                      Coverage Bharat OS // Secure_Data_Stream
+                    </p>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* UI Toggle - Sleek Pill Design */}
           <div className="absolute top-20 md:top-4 left-4 z-[2001] flex items-center gap-2">
@@ -290,29 +398,41 @@ export default function App() {
                 </div>
 
                 {/* Left Panel - Technical Sidebar */}
-                <div className="absolute top-16 left-4 bottom-8 w-64 hidden md:flex flex-col gap-4 z-[1001]">
+                <div className="absolute top-20 left-4 bottom-8 w-64 hidden md:flex flex-col gap-4 z-[1001]">
                   <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-4">
                     <Legend viewMode={viewMode} />
-                    <ProviderSelector 
-                      selectedProvider={selectedProvider} 
-                      onSelect={setSelectedProvider} 
-                    />
-                  </div>
-                  
-                  {/* View Mode Switcher - Integrated in Sidebar */}
-                  <div className="bg-black/80 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 flex gap-1">
-                    <button
-                      onClick={() => setViewMode('coverage')}
-                      className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'coverage' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-gray-500 hover:text-white'}`}
-                    >
-                      Coverage
-                    </button>
-                    <button
-                      onClick={() => setViewMode('speed')}
-                      className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'speed' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-gray-500 hover:text-white'}`}
-                    >
-                      Speed
-                    </button>
+                    
+                    {/* View Mode Switcher - Integrated in Sidebar */}
+                    <div className="bg-black/90 backdrop-blur-2xl p-5 rounded-3xl border border-white/10 flex flex-col gap-4 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
+                      <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-1 flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                        Visualization_Core
+                      </h3>
+                      <div className="flex flex-col gap-2.5">
+                        <button
+                          onClick={() => setViewMode('coverage')}
+                          className={`w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-center gap-3 ${
+                            viewMode === 'coverage' 
+                              ? 'bg-blue-600 border-blue-500 text-white shadow-xl shadow-blue-500/20' 
+                              : 'bg-white/[0.03] border-white/5 text-gray-500 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          <Wifi className="h-4 w-4" />
+                          Coverage Mode
+                        </button>
+                        <button
+                          onClick={() => setViewMode('speed')}
+                          className={`w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-center gap-3 ${
+                            viewMode === 'speed' 
+                              ? 'bg-purple-600 border-purple-500 text-white shadow-xl shadow-purple-500/20' 
+                              : 'bg-white/[0.03] border-white/5 text-gray-500 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          <Gauge className="h-4 w-4" />
+                          Speed Mode
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

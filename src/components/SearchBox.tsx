@@ -35,7 +35,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({ onSearch, onClear }) => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="SEARCH_LOCATION // INDIA_REGION"
-          className="block w-full pl-12 pr-10 py-3 bg-black/80 backdrop-blur-md border border-white/5 rounded-xl shadow-2xl focus:ring-1 focus:ring-blue-500/30 focus:border-blue-500/30 outline-none transition-all text-sm text-white placeholder:text-gray-600 font-mono uppercase tracking-tight"
+          className="block w-full pl-12 pr-10 py-4 bg-black/90 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50 outline-none transition-all text-sm text-white placeholder:text-gray-600 font-mono uppercase tracking-tight"
         />
         {query && (
           <button

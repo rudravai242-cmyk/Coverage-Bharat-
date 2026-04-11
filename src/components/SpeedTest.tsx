@@ -85,29 +85,35 @@ const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
       initial={{ opacity: 0, scale: 0.9, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: 20 }}
-      className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+      className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xl"
     >
-      <div className="relative w-full max-w-md bg-[#111] border border-white/10 rounded-[2.5rem] p-8 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-md bg-[#0a0a0a]/90 backdrop-blur-2xl border border-white/10 rounded-[3rem] p-10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden">
+        {/* Diamond Pattern Overlay */}
+        <div className="absolute inset-0 bg-diamond opacity-20 pointer-events-none" />
+        
         {/* Background Glow */}
-        <div className="absolute -top-24 -left-24 w-64 h-64 bg-blue-600/20 blur-[100px] rounded-full pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-purple-600/20 blur-[100px] rounded-full pointer-events-none" />
+        <div className="absolute -top-24 -left-24 w-80 h-80 bg-blue-600/10 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-purple-600/10 blur-[120px] rounded-full pointer-events-none" />
 
-        <div className="flex justify-between items-center mb-8 relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-600/20 rounded-xl">
+        <div className="flex justify-between items-center mb-10 relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-600/20 rounded-2xl border border-blue-500/30">
               <Gauge className="h-6 w-6 text-blue-500" />
             </div>
-            <h2 className="text-xl font-bold tracking-tight">Network Speed Test</h2>
+            <div>
+              <h2 className="text-xl font-black tracking-tight uppercase">Network Diagnostics</h2>
+              <p className="text-[10px] text-gray-500 font-mono uppercase tracking-widest mt-1">System_Probe_Active</p>
+            </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 hover:bg-white/5 rounded-full transition-colors"
+            className="p-2 hover:bg-white/5 rounded-full transition-colors border border-transparent hover:border-white/10"
           >
-            <X className="h-6 w-6 text-gray-400" />
+            <X className="h-6 w-6 text-gray-500 hover:text-white" />
           </button>
         </div>
 
-        <div className="flex flex-col items-center gap-8 relative z-10">
+        <div className="flex flex-col items-center gap-10 relative z-10">
           {/* Main Gauge Visual */}
           <div className="relative w-64 h-64 flex items-center justify-center">
             <svg className="w-full h-full -rotate-90 transform">
@@ -116,7 +122,7 @@ const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
                 cy="128"
                 r="110"
                 stroke="currentColor"
-                strokeWidth="12"
+                strokeWidth="8"
                 fill="transparent"
                 className="text-white/5"
               />
@@ -125,12 +131,12 @@ const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
                 cy="128"
                 r="110"
                 stroke="currentColor"
-                strokeWidth="12"
+                strokeWidth="10"
                 fill="transparent"
                 strokeDasharray="691"
                 initial={{ strokeDashoffset: 691 }}
                 animate={{ strokeDashoffset: 691 - (691 * (phase === 'idle' ? 0 : progress / 100)) }}
-                className={`${phase === 'upload' ? 'text-purple-500' : 'text-blue-500'} transition-all duration-300`}
+                className={`${phase === 'upload' ? 'text-purple-500' : 'text-blue-500'} transition-all duration-300 shadow-[0_0_20px_rgba(59,130,246,0.5)]`}
                 strokeLinecap="round"
               />
             </svg>
@@ -144,7 +150,7 @@ const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
                     onClick={startTest}
-                    className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/40 hover:bg-blue-500 transition-all active:scale-95"
+                    className="w-24 h-24 bg-blue-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/40 hover:bg-blue-500 transition-all active:scale-90 border border-blue-400/30"
                   >
                     <Play className="h-10 w-10 text-white ml-1" />
                   </motion.button>
@@ -155,13 +161,16 @@ const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
                     animate={{ opacity: 1 }}
                     className="flex flex-col items-center"
                   >
-                    <span className="text-5xl font-black tracking-tighter tabular-nums">
+                    <span className="text-6xl font-black tracking-tighter tabular-nums text-white">
                       {phase === 'complete' ? (phase === 'download' ? results.download : results.upload) : Math.floor(currentValue)}
                     </span>
-                    <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">Mbps</span>
-                    <span className="text-xs font-medium text-blue-400 mt-2 uppercase tracking-widest">
-                      {phase === 'latency' ? 'Measuring Ping...' : phase === 'download' ? 'Downloading...' : phase === 'upload' ? 'Uploading...' : 'Test Complete'}
-                    </span>
+                    <span className="text-xs font-black text-gray-500 uppercase tracking-[0.3em] mt-1">Mbps</span>
+                    <div className="mt-4 flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10">
+                      <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${phase === 'upload' ? 'bg-purple-500' : 'bg-blue-500'}`} />
+                      <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">
+                        {phase === 'latency' ? 'Measuring_Ping' : phase === 'download' ? 'Downloading_Data' : phase === 'upload' ? 'Uploading_Data' : 'Test_Complete'}
+                      </span>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -170,20 +179,20 @@ const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-3 gap-4 w-full">
-            <div className="bg-white/5 border border-white/5 p-4 rounded-3xl flex flex-col items-center gap-1">
+            <div className="bg-white/[0.03] border border-white/5 p-5 rounded-[2rem] flex flex-col items-center gap-1 transition-all">
               <Zap className="h-4 w-4 text-yellow-500 mb-1" />
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Ping</span>
-              <span className="text-lg font-bold font-mono">{results.latency || '--'} <span className="text-[10px] text-gray-600">ms</span></span>
+              <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Latency</span>
+              <span className="text-xl font-black font-mono text-white">{results.latency || '--'}<span className="text-[10px] text-gray-600 ml-1">ms</span></span>
             </div>
-            <div className={`bg-white/5 border border-white/5 p-4 rounded-3xl flex flex-col items-center gap-1 transition-all ${phase === 'download' ? 'ring-2 ring-blue-500/50 bg-blue-500/5' : ''}`}>
+            <div className={`bg-white/[0.03] border border-white/5 p-5 rounded-[2rem] flex flex-col items-center gap-1 transition-all ${phase === 'download' ? 'ring-2 ring-blue-500/50 bg-blue-500/10 border-blue-500/30' : ''}`}>
               <ArrowDown className="h-4 w-4 text-blue-500 mb-1" />
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Down</span>
-              <span className="text-lg font-bold font-mono">{results.download || '--'} <span className="text-[10px] text-gray-600">Mbps</span></span>
+              <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Down</span>
+              <span className="text-xl font-black font-mono text-white">{results.download || '--'}<span className="text-[10px] text-gray-600 ml-1">mbps</span></span>
             </div>
-            <div className={`bg-white/5 border border-white/5 p-4 rounded-3xl flex flex-col items-center gap-1 transition-all ${phase === 'upload' ? 'ring-2 ring-purple-500/50 bg-purple-500/5' : ''}`}>
+            <div className={`bg-white/[0.03] border border-white/5 p-5 rounded-[2rem] flex flex-col items-center gap-1 transition-all ${phase === 'upload' ? 'ring-2 ring-purple-500/50 bg-purple-500/10 border-purple-500/30' : ''}`}>
               <ArrowUp className="h-4 w-4 text-purple-500 mb-1" />
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Up</span>
-              <span className="text-lg font-bold font-mono">{results.upload || '--'} <span className="text-[10px] text-gray-600">Mbps</span></span>
+              <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Up</span>
+              <span className="text-xl font-black font-mono text-white">{results.upload || '--'}<span className="text-[10px] text-gray-600 ml-1">mbps</span></span>
             </div>
           </div>
 
@@ -192,9 +201,9 @@ const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={onClose}
-              className="w-full py-4 bg-white text-black font-bold rounded-2xl hover:bg-gray-200 transition-all active:scale-[0.98]"
+              className="w-full py-5 bg-blue-600 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-blue-500 transition-all active:scale-[0.95] shadow-xl shadow-blue-500/20"
             >
-              Done
+              Close Diagnostics
             </motion.button>
           )}
         </div>

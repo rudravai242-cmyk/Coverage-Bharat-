@@ -232,10 +232,10 @@ const Map: React.FC<MapProps> = ({ center, zoom, points, mapStyle, showHeatmap, 
     
     // Even more granular grid at all levels to increase density and richness
     const gridSize = currentZoom > 18 ? 0.00003 : 
-                     currentZoom > 16 ? 0.0001 : 
-                     currentZoom > 14 ? 0.0003 : 
-                     currentZoom > 11 ? 0.0012 : 
-                     currentZoom > 8 ? 0.005 : 0.015;
+                     currentZoom > 16 ? 0.00008 : 
+                     currentZoom > 14 ? 0.0002 : 
+                     currentZoom > 11 ? 0.0006 : 
+                     currentZoom > 8 ? 0.002 : 0.005;
     
     const grid: Record<string, { lat: number, lng: number, intensity: number, count: number }> = {};
 
@@ -244,31 +244,30 @@ const Map: React.FC<MapProps> = ({ center, zoom, points, mapStyle, showHeatmap, 
       const lngGrid = Math.round(p.lng / gridSize) * gridSize;
       const key = `${latGrid},${lngGrid}`;
 
-      let intensity = 0.15;
+      let intensity = 0.1;
       if (viewMode === 'speed') {
         if (p.speed) {
           const download = p.speed.download;
-          if (download > 200) intensity = 1.0;
-          else if (download > 100) intensity = 0.9;
-          else if (download > 50) intensity = 0.75;
-          else if (download > 10) intensity = 0.55;
-          else intensity = 0.35;
+          if (download > 200) intensity = 0.8;
+          else if (download > 100) intensity = 0.6;
+          else if (download > 50) intensity = 0.4;
+          else intensity = 0.2;
         } else {
-          intensity = 0.15;
+          intensity = 0.1;
         }
       } else {
-        if (p.tech === '5G') intensity = 1.0;
-        else if (p.tech === '4G') intensity = 0.85;
-        else if (p.tech === '3G') intensity = 0.7;
-        else intensity = 0.5;
+        if (p.tech === '5G') intensity = 0.8;
+        else if (p.tech === '4G') intensity = 0.6;
+        else if (p.tech === '3G') intensity = 0.4;
+        else intensity = 0.2;
       }
 
       if (!grid[key]) {
         grid[key] = { lat: latGrid, lng: lngGrid, intensity, count: 1 };
       } else {
         // Accumulate intensity to show density, but cap it
-        // Higher accumulation factor (0.5 instead of 0.3) for a more "solid" look
-        grid[key].intensity = Math.min(1.0, grid[key].intensity + (intensity * 0.5));
+        // Less aggressive accumulation (0.2 instead of 0.5) to avoid "solid block" saturation
+        grid[key].intensity = Math.min(1.0, grid[key].intensity + (intensity * 0.2));
         grid[key].count += 1;
       }
     });
@@ -276,34 +275,35 @@ const Map: React.FC<MapProps> = ({ center, zoom, points, mapStyle, showHeatmap, 
     const heatData = Object.values(grid).map(g => [g.lat, g.lng, g.intensity]);
 
     const speedGradient = {
-      0.2: '#FF0000', // Deep Red
-      0.4: '#FF8C00', // Dark Orange
-      0.6: '#FFD700', // Gold
-      0.8: '#00FF00', // Lime
-      1.0: '#00FFFF'  // Cyan
+      0.2: '#FF3B30', // iOS Red
+      0.4: '#FF9500', // iOS Orange
+      0.6: '#FFCC00', // iOS Yellow
+      0.8: '#34C759', // iOS Green
+      1.0: '#007AFF'  // iOS Blue
     };
 
     const coverageGradient = {
-      0.2: '#FF0000', // 2G (Vibrant Red)
-      0.4: '#FFA500', // 3G (Vibrant Orange)
-      0.6: '#007FFF', // 4G (Azure Blue)
-      0.8: '#00BFFF', // 4G+ (Deep Sky Blue)
-      1.0: '#BF00FF'  // 5G (Electric Purple)
+      0.2: '#FF3B30', // 2G
+      0.4: '#FF9500', // 3G
+      0.6: '#007AFF', // 4G
+      0.8: '#5856D6', // 4G+
+      1.0: '#AF52DE'  // 5G
     };
 
     // nPerf Style Heatmap: Seamless "Coverage Cloud"
-    // Significantly increased radius and blur for a more filled, rich look
+    // Adjusted radius and blur to be much tighter at low zoom levels
     heatLayerRef.current = window.L.heatLayer(heatData, {
-      radius: currentZoom > 18 ? 80 : 
-              currentZoom > 15 ? 65 : 
-              currentZoom > 12 ? 55 : 
-              currentZoom > 9 ? 45 : 35,
-      blur: currentZoom > 18 ? 50 : 
-            currentZoom > 15 ? 45 : 
-            currentZoom > 12 ? 40 : 
-            currentZoom > 9 ? 35 : 25,
+      radius: currentZoom > 18 ? 60 : 
+              currentZoom > 15 ? 40 : 
+              currentZoom > 12 ? 25 : 
+              currentZoom > 9 ? 15 : 8,
+      blur: currentZoom > 18 ? 35 : 
+            currentZoom > 15 ? 25 : 
+            currentZoom > 12 ? 15 : 
+            currentZoom > 9 ? 10 : 6,
       maxZoom: 20,
-      minOpacity: 0.55, // Higher min opacity for a more "solid" coverage look
+      // Dynamic minOpacity: lower at low zoom to prevent "square block" effect
+      minOpacity: currentZoom > 12 ? 0.4 : 0.15,
       gradient: viewMode === 'speed' ? speedGradient : coverageGradient
     }).addTo(mapInstance.current);
 
