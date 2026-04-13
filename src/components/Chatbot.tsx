@@ -4,7 +4,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
 import { ChatMessage } from '../types';
 
-const Chatbot: React.FC = () => {
+interface ChatbotProps {
+  accentColor?: string;
+}
+
+const Chatbot: React.FC<ChatbotProps> = ({ accentColor = '#3B82F6' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'model', text: 'Greetings. I am NetScan AI, your technical intelligence assistant. How may I assist you with network diagnostics or general inquiries today?' }
@@ -332,11 +336,16 @@ const Chatbot: React.FC = () => {
 
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-14 h-14 rounded-2xl shadow-2xl transition-all active:scale-95 flex items-center justify-center border ${
+        className={`w-14 h-14 rounded-2xl shadow-2xl transition-all active:scale-95 flex items-center justify-center border transition-colors duration-500 ${
           isOpen 
             ? 'bg-black border-white/10 text-white' 
-            : 'bg-blue-600 border-blue-500 text-white hover:bg-blue-500 shadow-lg shadow-blue-500/20'
+            : 'text-white shadow-lg'
         }`}
+        style={!isOpen ? { 
+          backgroundColor: accentColor,
+          borderColor: `${accentColor}88`,
+          boxShadow: `0 10px 25px ${accentColor}44`
+        } : {}}
       >
         {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
       </button>

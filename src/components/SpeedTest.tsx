@@ -5,9 +5,10 @@ import { Gauge, ArrowDown, ArrowUp, Zap, X, Play } from 'lucide-react';
 interface SpeedTestProps {
   onComplete: (results: { download: number; upload: number; latency: number }) => void;
   onClose: () => void;
+  accentColor?: string;
 }
 
-const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
+const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose, accentColor = '#3B82F6' }) => {
   const [phase, setPhase] = useState<'idle' | 'latency' | 'download' | 'upload' | 'complete'>('idle');
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState({ download: 0, upload: 0, latency: 0 });
@@ -92,13 +93,22 @@ const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
         <div className="absolute inset-0 bg-diamond opacity-20 pointer-events-none" />
         
         {/* Background Glow */}
-        <div className="absolute -top-24 -left-24 w-80 h-80 bg-blue-600/10 blur-[120px] rounded-full pointer-events-none" />
+        <div 
+          className="absolute -top-24 -left-24 w-80 h-80 blur-[120px] rounded-full pointer-events-none transition-colors duration-700" 
+          style={{ backgroundColor: `${accentColor}22` }}
+        />
         <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-purple-600/10 blur-[120px] rounded-full pointer-events-none" />
 
         <div className="flex justify-between items-center mb-10 relative z-10">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-600/20 rounded-2xl border border-blue-500/30">
-              <Gauge className="h-6 w-6 text-blue-500" />
+            <div 
+              className="p-3 rounded-2xl border transition-all duration-500"
+              style={{ 
+                backgroundColor: `${accentColor}33`,
+                borderColor: `${accentColor}44`
+              }}
+            >
+              <Gauge className="h-6 w-6" style={{ color: accentColor }} />
             </div>
             <div>
               <h2 className="text-xl font-black tracking-tight uppercase">Network Diagnostics</h2>
@@ -136,7 +146,11 @@ const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
                 strokeDasharray="691"
                 initial={{ strokeDashoffset: 691 }}
                 animate={{ strokeDashoffset: 691 - (691 * (phase === 'idle' ? 0 : progress / 100)) }}
-                className={`${phase === 'upload' ? 'text-purple-500' : 'text-blue-500'} transition-all duration-300 shadow-[0_0_20px_rgba(59,130,246,0.5)]`}
+                style={{ 
+                  color: phase === 'upload' ? '#A855F7' : accentColor,
+                  filter: `drop-shadow(0 0 8px ${phase === 'upload' ? '#A855F7' : accentColor}88)`
+                }}
+                className="transition-all duration-300"
                 strokeLinecap="round"
               />
             </svg>
@@ -150,7 +164,12 @@ const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
                     onClick={startTest}
-                    className="w-24 h-24 bg-blue-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/40 hover:bg-blue-500 transition-all active:scale-90 border border-blue-400/30"
+                    className="w-24 h-24 rounded-3xl flex items-center justify-center shadow-2xl transition-all active:scale-90 border"
+                    style={{ 
+                      backgroundColor: accentColor,
+                      boxShadow: `0 20px 40px ${accentColor}66`,
+                      borderColor: `${accentColor}88`
+                    }}
                   >
                     <Play className="h-10 w-10 text-white ml-1" />
                   </motion.button>
@@ -166,8 +185,11 @@ const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
                     </span>
                     <span className="text-xs font-black text-gray-500 uppercase tracking-[0.3em] mt-1">Mbps</span>
                     <div className="mt-4 flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10">
-                      <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${phase === 'upload' ? 'bg-purple-500' : 'bg-blue-500'}`} />
-                      <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">
+                      <div 
+                        className="w-1.5 h-1.5 rounded-full animate-pulse" 
+                        style={{ backgroundColor: phase === 'upload' ? '#A855F7' : accentColor }}
+                      />
+                      <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: phase === 'upload' ? '#A855F7' : accentColor }}>
                         {phase === 'latency' ? 'Measuring_Ping' : phase === 'download' ? 'Downloading_Data' : phase === 'upload' ? 'Uploading_Data' : 'Test_Complete'}
                       </span>
                     </div>
@@ -184,8 +206,8 @@ const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
               <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Latency</span>
               <span className="text-xl font-black font-mono text-white">{results.latency || '--'}<span className="text-[10px] text-gray-600 ml-1">ms</span></span>
             </div>
-            <div className={`bg-white/[0.03] border border-white/5 p-5 rounded-[2rem] flex flex-col items-center gap-1 transition-all ${phase === 'download' ? 'ring-2 ring-blue-500/50 bg-blue-500/10 border-blue-500/30' : ''}`}>
-              <ArrowDown className="h-4 w-4 text-blue-500 mb-1" />
+            <div className={`bg-white/[0.03] border border-white/5 p-5 rounded-[2rem] flex flex-col items-center gap-1 transition-all ${phase === 'download' ? 'ring-2 bg-white/5' : ''}`} style={phase === 'download' ? { ringColor: `${accentColor}88`, borderColor: `${accentColor}55` } : {}}>
+              <ArrowDown className="h-4 w-4 mb-1" style={{ color: accentColor }} />
               <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Down</span>
               <span className="text-xl font-black font-mono text-white">{results.download || '--'}<span className="text-[10px] text-gray-600 ml-1">mbps</span></span>
             </div>
@@ -201,7 +223,11 @@ const SpeedTest: React.FC<SpeedTestProps> = ({ onComplete, onClose }) => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={onClose}
-              className="w-full py-5 bg-blue-600 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-blue-500 transition-all active:scale-[0.95] shadow-xl shadow-blue-500/20"
+              className="w-full py-5 text-white font-black uppercase tracking-widest rounded-2xl transition-all active:scale-[0.95] shadow-xl"
+              style={{ 
+                backgroundColor: accentColor,
+                boxShadow: `0 10px 30px ${accentColor}55`
+              }}
             >
               Close Diagnostics
             </motion.button>

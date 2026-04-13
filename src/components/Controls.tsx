@@ -10,12 +10,14 @@ interface ControlsProps {
   onStyleChange: (style: 'satellite' | 'streets' | 'dark' | 'light') => void;
   showHeatmap: boolean;
   onToggleHeatmap: () => void;
+  accentColor?: string;
 }
 
 const Controls: React.FC<ControlsProps> = ({ 
   onZoomIn, onZoomOut, onMyLocation, 
   mapStyle, onStyleChange, 
-  showHeatmap, onToggleHeatmap 
+  showHeatmap, onToggleHeatmap,
+  accentColor = '#3B82F6'
 }) => {
   const [showStyles, setShowStyles] = useState(false);
 
@@ -47,9 +49,14 @@ const Controls: React.FC<ControlsProps> = ({
                   }}
                   className={`flex items-center gap-4 p-3 rounded-xl transition-all border ${
                     mapStyle === style.id 
-                      ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                      ? 'text-white shadow-lg' 
                       : 'text-gray-400 border-transparent hover:bg-white/5 hover:text-white'
                   }`}
+                  style={mapStyle === style.id ? { 
+                    backgroundColor: accentColor,
+                    borderColor: `${accentColor}88`,
+                    boxShadow: `0 4px 12px ${accentColor}44`
+                  } : {}}
                 >
                   {style.icon}
                   <span className="text-[10px] font-black uppercase tracking-widest">{style.label}</span>
@@ -62,8 +69,12 @@ const Controls: React.FC<ControlsProps> = ({
         <button
           onClick={() => setShowStyles(!showStyles)}
           className={`w-12 h-12 rounded-2xl shadow-2xl transition-all active:scale-90 border border-white/10 flex items-center justify-center ${
-            showStyles ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-black/90 backdrop-blur-2xl text-gray-400 hover:text-white hover:bg-white/5'
+            showStyles ? 'text-white shadow-lg' : 'bg-black/90 backdrop-blur-2xl text-gray-400 hover:text-white hover:bg-white/5'
           }`}
+          style={showStyles ? { 
+            backgroundColor: accentColor,
+            boxShadow: `0 8px 20px ${accentColor}44`
+          } : {}}
           title="Map Style"
         >
           <Layers className="h-5 w-5" />
@@ -74,8 +85,12 @@ const Controls: React.FC<ControlsProps> = ({
       <button
         onClick={onToggleHeatmap}
         className={`w-12 h-12 rounded-2xl shadow-2xl transition-all active:scale-90 border border-white/10 flex items-center justify-center ${
-          showHeatmap ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-black/90 backdrop-blur-2xl text-gray-400 hover:text-white hover:bg-white/5'
+          showHeatmap ? 'text-white shadow-lg' : 'bg-black/90 backdrop-blur-2xl text-gray-400 hover:text-white hover:bg-white/5'
         }`}
+        style={showHeatmap ? { 
+          backgroundColor: accentColor,
+          boxShadow: `0 8px 20px ${accentColor}44`
+        } : {}}
         title={showHeatmap ? "Hide Coverage" : "Show Coverage"}
       >
         {showHeatmap ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
@@ -83,7 +98,12 @@ const Controls: React.FC<ControlsProps> = ({
 
       <button
         onClick={onMyLocation}
-        className="w-12 h-12 bg-blue-600 text-white rounded-2xl shadow-2xl hover:bg-blue-700 active:scale-90 transition-all group border border-blue-500/50 flex items-center justify-center"
+        className="w-12 h-12 text-white rounded-2xl shadow-2xl active:scale-90 transition-all group border flex items-center justify-center"
+        style={{ 
+          backgroundColor: accentColor,
+          borderColor: `${accentColor}88`,
+          boxShadow: `0 8px 20px ${accentColor}44`
+        }}
         title="My Location"
       >
         <Navigation className="h-5 w-5 group-hover:rotate-12 transition-transform" />

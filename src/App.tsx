@@ -75,6 +75,11 @@ export default function App() {
   const [viewMode, setViewMode] = useState<'coverage' | 'speed'>('coverage');
   const [showSpeedTest, setShowSpeedTest] = useState(false);
 
+  const providerColor = useMemo(() => {
+    if (!selectedProvider) return '#3B82F6';
+    return PROVIDERS.find(p => p.id === selectedProvider)?.color || '#3B82F6';
+  }, [selectedProvider]);
+
   // Reporting State
   const [reportingLocation, setReportingLocation] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -232,11 +237,19 @@ export default function App() {
       <header className="absolute top-0 left-0 right-0 h-16 bg-black/90 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-4 z-[3000]">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 ring-1 ring-blue-400/30">
+            <div 
+              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-all duration-500 ring-1 ring-white/10"
+              style={{ 
+                backgroundColor: providerColor,
+                boxShadow: `0 10px 20px ${providerColor}33`
+              }}
+            >
               <Activity className="h-6 w-6 text-white" />
             </div>
             <div className="hidden xs:block">
-              <h1 className="font-black text-base tracking-tight text-white uppercase leading-none">Coverage Bharat <span className="text-blue-500">OS</span></h1>
+              <h1 className="font-black text-base tracking-tight text-white uppercase leading-none">
+                Coverage Bharat <span style={{ color: providerColor }} className="transition-colors duration-500">OS</span>
+              </h1>
               <p className="text-[10px] text-gray-500 font-mono uppercase tracking-[0.2em] mt-1">v2.5.0 // LIVE_NETWORK_CORE</p>
             </div>
           </div>
@@ -253,9 +266,13 @@ export default function App() {
                   onClick={() => handleProviderSelect(provider.id)}
                   className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                     selectedProvider === provider.id 
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                      ? 'text-white shadow-lg' 
                       : 'text-gray-500 hover:text-white hover:bg-white/5'
                   }`}
+                  style={selectedProvider === provider.id ? { 
+                    backgroundColor: providerColor,
+                    boxShadow: `0 4px 12px ${providerColor}44`
+                  } : {}}
                 >
                   {provider.name}
                 </button>
@@ -275,9 +292,13 @@ export default function App() {
           
           <button 
             onClick={() => setShowSpeedTest(true)}
-            className="px-4 py-2 bg-blue-600/10 border border-blue-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all flex items-center gap-2 shadow-lg shadow-blue-500/5 group"
+            className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-white transition-all flex items-center gap-2 shadow-lg group"
+            style={{ 
+              borderColor: `${providerColor}44`,
+              backgroundColor: `${providerColor}11`
+            }}
           >
-            <Gauge className="h-4 w-4 group-hover:rotate-12 transition-transform" />
+            <Gauge className="h-4 w-4 group-hover:rotate-12 transition-transform" style={{ color: providerColor }} />
             <span className="hidden sm:inline">Run Diagnostics</span>
             <span className="sm:hidden">Test</span>
           </button>
@@ -330,19 +351,28 @@ export default function App() {
                       <button
                         key={provider.id}
                         onClick={() => handleProviderSelect(provider.id)}
-                        className="group relative p-4 rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-blue-600 hover:border-blue-500 transition-all duration-300 text-left overflow-hidden"
+                        className="group relative p-4 rounded-2xl border border-white/5 bg-white/[0.03] transition-all duration-300 text-left overflow-hidden"
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = provider.color;
+                          e.currentTarget.style.borderColor = `${provider.color}88`;
+                          e.currentTarget.style.boxShadow = `0 10px 30px ${provider.color}44`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)';
+                          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
                       >
                         <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
                           <Activity className="h-12 w-12" />
                         </div>
                         <div 
-                          className="w-2 h-2 rounded-full mb-3 shadow-[0_0_8px_rgba(255,255,255,0.3)]" 
-                          style={{ backgroundColor: provider.color }} 
+                          className="w-2 h-2 rounded-full mb-3 shadow-[0_0_8px_rgba(255,255,255,0.3)] bg-white" 
                         />
                         <span className="block text-xs font-black uppercase tracking-widest text-gray-400 group-hover:text-white transition-colors">
                           {provider.name}
                         </span>
-                        <span className="block text-[9px] text-gray-600 group-hover:text-blue-200 mt-1 uppercase font-bold">
+                        <span className="block text-[9px] text-gray-600 group-hover:text-white/70 mt-1 uppercase font-bold">
                           Network Core
                         </span>
                       </button>
@@ -394,18 +424,28 @@ export default function App() {
               >
                 {/* Search - Floating Center */}
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-[1001]">
-                  <SearchBox onSearch={handleSearch} onClear={() => setZoom(INITIAL_ZOOM)} />
+                  <SearchBox 
+                    onSearch={handleSearch} 
+                    onClear={() => setZoom(INITIAL_ZOOM)} 
+                    accentColor={providerColor}
+                  />
                 </div>
 
                 {/* Left Panel - Technical Sidebar */}
                 <div className="absolute top-20 left-4 bottom-8 w-64 hidden md:flex flex-col gap-4 z-[1001]">
                   <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-4">
-                    <Legend viewMode={viewMode} />
+                    <Legend viewMode={viewMode} accentColor={providerColor} />
                     
                     {/* View Mode Switcher - Integrated in Sidebar */}
                     <div className="bg-black/90 backdrop-blur-2xl p-5 rounded-3xl border border-white/10 flex flex-col gap-4 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
-                      <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-1 flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] mb-1 flex items-center gap-2 transition-colors duration-500" style={{ color: providerColor }}>
+                        <div 
+                          className="w-1.5 h-1.5 rounded-full animate-pulse transition-all duration-500" 
+                          style={{ 
+                            backgroundColor: providerColor,
+                            boxShadow: `0 0 8px ${providerColor}88`
+                          }} 
+                        />
                         Visualization_Core
                       </h3>
                       <div className="flex flex-col gap-2.5">
@@ -413,9 +453,14 @@ export default function App() {
                           onClick={() => setViewMode('coverage')}
                           className={`w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-center gap-3 ${
                             viewMode === 'coverage' 
-                              ? 'bg-blue-600 border-blue-500 text-white shadow-xl shadow-blue-500/20' 
+                              ? 'text-white shadow-xl' 
                               : 'bg-white/[0.03] border-white/5 text-gray-500 hover:text-white hover:bg-white/10'
                           }`}
+                          style={viewMode === 'coverage' ? { 
+                            backgroundColor: providerColor,
+                            borderColor: `${providerColor}88`,
+                            boxShadow: `0 10px 20px ${providerColor}33`
+                          } : {}}
                         >
                           <Wifi className="h-4 w-4" />
                           Coverage Mode
@@ -424,9 +469,14 @@ export default function App() {
                           onClick={() => setViewMode('speed')}
                           className={`w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-center gap-3 ${
                             viewMode === 'speed' 
-                              ? 'bg-purple-600 border-purple-500 text-white shadow-xl shadow-purple-500/20' 
+                              ? 'text-white shadow-xl' 
                               : 'bg-white/[0.03] border-white/5 text-gray-500 hover:text-white hover:bg-white/10'
                           }`}
+                          style={viewMode === 'speed' ? { 
+                            backgroundColor: '#AF52DE', // Keep purple for speed mode or use provider color?
+                            borderColor: '#AF52DE88',
+                            boxShadow: `0 10px 20px #AF52DE33`
+                          } : {}}
                         >
                           <Gauge className="h-4 w-4" />
                           Speed Mode
@@ -446,6 +496,7 @@ export default function App() {
                     onStyleChange={setMapStyle}
                     showHeatmap={showHeatmap}
                     onToggleHeatmap={() => setShowHeatmap(!showHeatmap)}
+                    accentColor={providerColor}
                   />
                 </div>
               </motion.div>
@@ -454,13 +505,14 @@ export default function App() {
         </div>
       </main>
 
-      <Chatbot />
+      <Chatbot accentColor={providerColor} />
 
       <AnimatePresence>
         {showSpeedTest && (
           <SpeedTest 
             onComplete={handleSpeedTestComplete}
             onClose={() => setShowSpeedTest(false)}
+            accentColor={providerColor}
           />
         )}
       </AnimatePresence>
